@@ -24,7 +24,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const jsonParser = parser.json();
 
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:3000'
+}));
 
 app.get("/", protect(index.handle(db)));
 
