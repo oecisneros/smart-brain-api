@@ -5,6 +5,18 @@ const protect = fn => (...args) => {
     }
 };
 
+const redisAuthorize = (redis, fn) => (...args) => {
+    const [req, res] = [args[0], args[1]];    
+    const { authorization } = req.headers;
+
+    redis.get(authorization, function (err, reply) {
+        if (err || !reply) {
+            return res.status(400).json("Unauthorized");
+        }
+        return protect(fn(...args));
+    });
+};
+
 const sendJson = res => data => res.json(data);
 
 const sendOrNotFound = res => response => {
@@ -16,6 +28,7 @@ const sendOrNotFound = res => response => {
 };
 
 module.exports = {
+    redisAuthorize,
     protect,
     sendJson,
     sendOrNotFound,
