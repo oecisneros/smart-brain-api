@@ -13,6 +13,8 @@ const predict = require("./controllers/predict");
 const index = require("./controllers/index");
 const { redisAuthorize, protect } = require("./core/common");
 
+const client = redis.createClient({ host: "redis" });
+
 const db = knex({
     client: "pg",
     connection: {
@@ -21,36 +23,35 @@ const db = knex({
     }
 });
 
-const app = express();
 const PORT = process.env.PORT || 3001;
 const jsonParser = parser.json();
+const authorize = redisAuthorize(client, "sighin", "register");
 
-const redisClient = redis.createClient({ host: "redis" });
-const authorize = redisAuthorize.bind(null, redisClient);
+const app = express();
 
 app.use(cors({
     origin: 'http://localhost:3000'
 }));
 
-app.get("/", authorize(index.handle(db)));
+app.use(authorize);
 
-app.get("/profile/:id", authorize(profile.get(db)));
+app.get("/", protect(index.handle(db)));
 
-app.put("/profile/:id", authorize(profile.save(db)));
+app.get("/profile/:id", protect(profile.get(db)));
 
-app.put("/image", jsonParser, authorize(image.handle(db)));
+app.put("/profile/:id", protect(profile.save(db)));
 
-app.post("/predict", jsonParser, authorize(predict.handle()));
+app.put("/image", jsonParser, protect(image.handle(db)));
 
-app.post("/signin", jsonParser, protect(signin.handle(db, redisClient, bcrypt)));
+app.post("/predict", jsonParser, protect(predict.handle()));
 
-app.post("/register", jsonParser, authorize(register.handle(db, bcrypt)));
+app.post("/signin", jsonParser, protect(signin.handle(db, client, bcrypt)));
+
+app.post("/register", jsonParser, protect(register.handle(db, bcrypt)));
 
 app.use(function (err, _, res, _) {
     console.error(err);
     res.status(500).json("An unexpected error has occurred");
 });
 
-app.listen(PORT, () => {
-    console.log(`App is runing on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`App is runing on port ${PORT}`));
