@@ -1,8 +1,10 @@
 const unwrap = obj => ((obj.length || 0) > 0 ? obj[0] : null);
 
-const getUserCredentialsBy = (db, params) =>
-    db("login")
-        .where(params)
+const getUserCredentials = (db, email) =>
+    db.from('login')
+        .innerJoin('users', 'login.email', 'users.email')
+        .select("users.id", "login.email", "login.hash")
+        .where("login.email", email)
         .then(unwrap);
 
 const getUserBy = (db, params) =>
@@ -40,17 +42,23 @@ const registerUser = (db, name, email, hash) => {
     });
 };
 
-const updateUserEntriesBy = (db, params) =>
+const updateUserEntries = (db, id) =>
     db("users")
-        .where(params)
+        .where({ id })
         .increment("entries", 1)
         .returning("entries")
         .then(unwrap);
 
+const updateProfile = (db, params) =>
+    db("users")
+        .where(params)
+        .update({ name });
+
 module.exports = {
-    getUserCredentialsBy,
+    getUserCredentials,
     getUserBy,
     getUsers,
     registerUser,
-    updateUserEntriesBy
+    updateProfile,
+    updateUserEntries
 };

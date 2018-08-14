@@ -1,25 +1,32 @@
-const { getUserBy, getUserCredentialsBy } = require("../core/repository");
-const { sendOrNotFound } = require("../core/common");
+const { getUserCredentials } = require("../core/repository");
+const jwt = require("jsonwebtoken");
 
-const handle = (db, bcrypt) => (req, res) => {
+const signToken = userInfo =>
+    jwt.sign({ email: userInfo.email }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+const createSession = (redis, userInfo) => {
+    const token = signToken(userInfo);
+    redis.set(token, userInfo.id);
+    return { success: true, id: userInfo.id, token };
+}
+
+const handle = (db, redis, bcrypt) => (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
         return res.status(400).json("Incorrect form submission");
     }
 
-    const validateUser = async login => {
-        const isValid = login && bcrypt.compareSync(password, login.hash);
-
+    const validateUser = userInfo => {
+        const isValid = userInfo && bcrypt.compareSync(password, userInfo.hash);
         if (isValid) {
-            let user = await getUserBy(db, { email });
-            sendOrNotFound(res)(user);
-        } else {
-            res.status(400).json("Invalid credentials");
+            const session = createSession(redis, userInfo);
+            return res.json(session);
         }
+        return res.status(400).json("Invalid credentials");
     };
 
-    return getUserCredentialsBy(db, { email })
+    return getUserCredentials(db, email)
         .then(validateUser);
 };
 
