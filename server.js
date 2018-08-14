@@ -25,7 +25,7 @@ const db = knex({
 
 const PORT = process.env.PORT || 3001;
 const jsonParser = parser.json();
-const authorize = redisAuthorize(client, "sighin", "register");
+const authorize = redisAuthorize(client, "signin", "register");
 
 const app = express();
 
